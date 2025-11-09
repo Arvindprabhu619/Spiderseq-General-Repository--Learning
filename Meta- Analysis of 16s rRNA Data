@@ -65,6 +65,23 @@ $ ls
 
 #Data downloaded
 
+*Comment for converting sra to Fastq in seperate folder*
+
+for sra in *.sra; do
+    base=$(basename "$sra" .sra)
+    echo "Processing $base ..."
+
+    # Convert SRA to paired FASTQ
+    fasterq-dump "$sra" --split-files --threads 8 --temp ~/SRA_data/tmp
+
+    # Compress FASTQs
+    pigz -p 8 "${base}_1.fastq"
+    pigz -p 8 "${base}_2.fastq"
+done
+
+#To check which all files converted correctly containg 2 fastq files (paired end sra)
+
+
 
 
 
