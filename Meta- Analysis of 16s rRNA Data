@@ -67,20 +67,69 @@ $ ls
 
 *Comment for converting sra to Fastq in seperate folder*
 
-for sra in *.sra; do
-    base=$(basename "$sra" .sra)
-    echo "Processing $base ..."
+#!/bin/bash
 
-    # Convert SRA to paired FASTQ
-    fasterq-dump "$sra" --split-files --threads 8 --temp ~/SRA_data/tmp
+IN_DIR="/home/spiseq/SRA_data/sra/raw_V4/srr_v4_raw_files"
+OUT_DIR="/home/spiseq/SRA_data/sra/raw_V4/srr_v4_fasta_files"
 
-    # Compress FASTQs
-    pigz -p 8 "${base}_1.fastq"
-    pigz -p 8 "${base}_2.fastq"
+mkdir -p "$OUT_DIR"
+
+for srafile in "$IN_DIR"/*.sra
+do
+    base=$(basename "$srafile" .sra)
+    echo "Converting $base ..."
+    fasterq-dump --split-files --outdir "$OUT_DIR" "$srafile"
 done
+
+echo "Conversion complete."
 
 #To check which all files converted correctly containg 2 fastq files (paired end sra)
 
+#!/bin/bash
+
+FASTQ_DIR="/home/spiseq/SRA_data/sra/raw_V4/srr_v4_fasta_files"
+
+cd "$FASTQ_DIR" || exit 1
+
+for fq1 in *_1.fastq.gz
+do
+    base=${fq1%_1.fastq.gz}
+    if [[ -f "${base}_2.fastq.gz" ]]; then
+        echo "$base: Paired FASTQ files present"
+    else
+        echo "$base: Missing _2.fastq.gz file"
+    fi
+done
+
+#output
+SRR12597091: Missing _2.fastq.gz file
+SRR12597092: Missing _2.fastq.gz file
+SRR12597093: Missing _2.fastq.gz file
+SRR12597098: Missing _2.fastq.gz file
+SRR12597101: Missing _2.fastq.gz file
+SRR12597102: Missing _2.fastq.gz file
+SRR12597103: Missing _2.fastq.gz file
+SRR12597104: Missing _2.fastq.gz file
+SRR12597105: Missing _2.fastq.gz file
+SRR12597106: Missing _2.fastq.gz file
+SRR12597109: Missing _2.fastq.gz file
+SRR12597110: Missing _2.fastq.gz file
+SRR13483205: Paired FASTQ files present
+SRR25744505: Paired FASTQ files present
+SRR25744506: Paired FASTQ files present
+SRR25744507: Paired FASTQ files present
+SRR25744508: Paired FASTQ files present
+SRR25744509: Paired FASTQ files present
+SRR25744510: Paired FASTQ files present
+SRR25744511: Paired FASTQ files present
+SRR25744522: Paired FASTQ files present
+SRR25744528: Paired FASTQ files present
+SRR25744529: Paired FASTQ files present
+SRR25744530: Paired FASTQ files present
+SRR25744531: Paired FASTQ files present
+SRR25744532: Paired FASTQ files present
+SRR25744533: Paired FASTQ files present
+SRR25744534: Paired FASTQ files present
 
 
 
