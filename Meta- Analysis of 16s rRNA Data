@@ -1,0 +1,61 @@
+Install and unzip sratoolkit
+
+cd ~
+wget https://ftp-trace.ncbi.nlm.nih.gov/sra/tools/sratoolkit.current-ubuntu64.tar.gz
+tar -xvf sratoolkit.current-ubuntu64.tar.gz
+
+#Find where the downloaded sratoolkit is located
+find / -type d -name "sratoolkit*" 2>/dev/null
+
+#Fixing the path for installed SRA toolkit, so that it could be accessed from anywhere in the terminal
+echo 'export PATH="/home/spiseq/Desktop/sratoolkit.3.2.1-ubuntu64/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+
+#Download prepared metadata sheet csv
+
+#Convert the csv to txt (only the sample run column) is requried for downloading
+cut -d',' -f1 v3v4.csv > srr_v3v4.txt
+
+#Check how it parsed and stored
+head srr_v4v5.txt
+
+#output
+Run
+SRR15609946
+
+"
+
+"
+SRR15609947
+
+"
+#Then
+sed -i '1{/^Run$/d}' srr_v4v5.txt
+sed -i 's/"//g' srr_v4v5.txt
+sed -i '/^$/d' srr_v4v5.txt
+sed -i 's/^[ \t]*//;s/[ \t]*$//' srr_v4v5.txt
+
+#Check how it parsed and stored
+head srr_v4v5.txt
+
+#Output
+SRR15609946
+SRR15609947
+SRR15609948
+SRR15609949
+SRR15609950
+SRR15609951
+SRR15609952
+SRR15609953
+SRR15609954
+SRR15609955
+
+#Good to Go
+#Go to the directory you want to store your data
+cd ~/SRA_data/sra/raw_V4V5
+
+#Prefetch to pull the data from NCBI
+prefetch --output-directory /home/spiseq/SRA_data/sra/raw_V4V5/srr_v4v5_raw_files --option-file srr_v4v5.txt (parsed txt file-prepared by above method)
+
+
+
