@@ -1,0 +1,25 @@
+Good question.
+We can download FASTQ directly. It’s not wrong. But there are clear pros/cons. Let’s break it down in a practical microbiome pipeline context:
+
+Why People Often Download .sra First
+Most FASTQ downloads come from ENA or NCBI’s EBI mirror, and they are usually:
+Not quality-normalized
+Sometimes missing quality scores (older runs)
+Sometimes compressed differently
+Occasionally truncated if the dataset was updated later
+
+When you store the .sra, you store the original archival format exactly as submitted.
+Then you convert to FASTQ locally.
+
+Why you see only one .sra file
+
+An .sra file is not fastq.
+It is a binary container that can hold:
+
+Forward reads
+Reverse reads
+Quality scores
+Metadata
+
+So even for paired-end data, you will get one .sra file per sample.
+This does not mean it is single-end. It just means everything is packed inside.
