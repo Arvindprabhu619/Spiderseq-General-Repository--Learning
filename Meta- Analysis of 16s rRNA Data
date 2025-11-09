@@ -58,10 +58,13 @@ cd ~/SRA_data/sra/raw_V4V5
 prefetch --output-directory /home/spiseq/SRA_data/sra/raw_V4V5/srr_v4v5_raw_files --option-file srr_v4v5.txt (parsed txt file-prepared by above method)
 
 #The above comment downloads files inside folder (each file is loaded inside folder),to remove multiple folder make it come under one common folder
-mkdir -p /home/spiseq/SRA_data/sra/raw_V4V5/srr_v4v5_raw_files
-cd ~/SRA_data/sra/raw_V4V5
-prefetch --output-directory /home/spiseq/SRA_data/sra/raw_V4V5/srr_v4v5_raw_files --option-file srr_v4v5.txt
-/home/spiseq/SRA_data/sra/raw_V4V5/srr_v4v5_raw_files
+$ cd /home/spiseq/SRA_data/sra/raw_V3V4/srr_v3v4_raw_files
+$ find . -type f -name "*.sra" -exec mv {} . \;
+$ find . -type d -empty -delete
+$ ls
+
+#Data downloaded
+
 
 
 
