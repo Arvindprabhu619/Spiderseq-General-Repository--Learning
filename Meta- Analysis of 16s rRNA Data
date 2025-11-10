@@ -299,3 +299,35 @@ write.csv(qualF_summary, "Forward_quality_summary.csv", row.names = FALSE)
 write.csv(qualR_summary, "Reverse_quality_summary.csv", row.names = FALSE)
 
 cat("✅ Done! Quality profiles saved:\n- Forward_quality_summary.csv\n- Reverse_quality_summary.csv\n")
+
+library(dada2)
+
+# Path to trimmed fastq folder
+path <- "/home/spiseq/SRA_data/sra/raw_V3V4/srr_v3v4_fastq_files/trimmed_fastq"
+
+# Forward and reverse reads
+fnFs <- sort(list.files(path, pattern="_1.trimmed.fastq.gz", full.names = TRUE))
+fnRs <- sort(list.files(path, pattern="_2.trimmed.fastq.gz", full.names = TRUE))
+
+# Output folder for filtered reads
+filt_path <- file.path(path, "filtered")
+if(!dir.exists(filt_path)) dir.create(filt_path)
+
+filtFs <- file.path(filt_path, basename(fnFs))
+filtRs <- file.path(filt_path, basename(fnRs))
+
+Truncking the poor quality reads
+out <- filterAndTrim(
+  fnFs, filtFs,
+  fnRs, filtRs,
+  truncLen = c(280, 250),
+  maxN = 0,             # No ambiguous bases
+  maxEE = c(2, 2),      # Max expected errors
+  truncQ = 2,           # Truncate reads at first base with Q <= 2
+  rm.phix = TRUE,       # Remove PhiX contamination
+  compress = TRUE,
+  multithread = TRUE
+)
+
+# Summary of how many reads passed filtering
+head(out)
