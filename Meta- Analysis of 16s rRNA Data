@@ -266,4 +266,36 @@ multiqc fastqc_reports -o fastqc_reports
 Open report:
 xdg-open fastqc_reports/multiqc_report.html
 
+To get overall quality report for truncation
+library(dada2)
+library(ShortRead)
+library(Biostrings)
 
+# Path to trimmed fastq folder
+path <- "/home/spiseq/SRA_data/sra/raw_V3V4/srr_v3v4_fastq_files/trimmed_fastq"
+
+fnFs <- sort(list.files(path, pattern="_1.trimmed.fastq.gz", full.names = TRUE))
+fnRs <- sort(list.files(path, pattern="_2.trimmed.fastq.gz", full.names = TRUE))
+
+# Function: extract per-base median and q10 quality
+get_qual <- function(files){
+  q_list <- lapply(files, function(f){
+    fq <- readFastq(f)
+    q <- as(quality(fq), "matrix")   # Convert to numeric matrix
+    apply(q, 2, mean, na.rm = TRUE)  # Mean quality per position
+  })
+  q_mat <- do.call(cbind, q_list)
+  data.frame(
+    pos = 1:nrow(q_mat),
+    medianQ = apply(q_mat, 1, median),
+    q10 = apply(q_mat, 1, quantile, probs = 0.10)
+  )
+}
+
+qualF_summary <- get_qual(fnFs)
+qualR_summary <- get_qual(fnRs)
+
+write.csv(qualF_summary, "Forward_quality_summary.csv", row.names = FALSE)
+write.csv(qualR_summary, "Reverse_quality_summary.csv", row.names = FALSE)
+
+cat("✅ Done! Quality profiles saved:\n- Forward_quality_summary.csv\n- Reverse_quality_summary.csv\n")
