@@ -204,3 +204,66 @@ conda install -c conda-forge -c bioconda r-base=4.3 bioconductor-dada2 bioconduc
 This step will take some minutes, because it installs R and required libraries.
 
 Once all done environment is ready
+
+If you also want RStudio (optional, recommended):
+conda install -c conda-forge rstudio -y
+
+Next Collect Primer sequence used in the study (V3-V4) 
+Find common consequence of the primers used 
+✅ So our trimming primers will be:
+Forward:
+CCTACGGGNGGCWGCAG
+
+Reverse (reverse-complement when trimming R2):
+GGACTACHVGGGTWTCTAAT
+
+✅ Create an output directory for trimmed reads
+
+Run this once:
+
+mkdir trimmed_fastq
+
+✅ Run Cutadapt on ALL samples in a loop
+
+Copy and paste exactly:
+
+for sample in *_1.fastq.gz
+do
+    base=$(basename "$sample" _1.fastq.gz)
+    cutadapt \
+      -g ^CCTACGGGNGGCWGCAG \
+      -g ^ACTCCTACGGGAGGCAGCAG \
+      -g ^CCTAYGGGRBGCASCAG \
+      -G ^ATTAGAWACCCBDGTAGTCC \
+      --error-rate 0.12 \
+      --minimum-length 100 \
+      -o trimmed_fastq/${base}_1.trimmed.fastq.gz \
+      -p trimmed_fastq/${base}_2.trimmed.fastq.gz \
+      ${base}_1.fastq.gz ${base}_2.fastq.gz
+done
+
+✅ Install FastQC and MultiQC (correct way)
+conda install -c bioconda fastqc multiqc -y
+
+✅ Then run the QC commands again
+cd ~/SRA_data/sra/raw_V3V4/srr_v3v4_fastq_files/trimmed_fastq
+
+fastqc *.trimmed.fastq.gz -o ../fastqc_reports
+conda install -c bioconpip install multiqc
+conda install -c bioconda -c conda-forge fastqc -y
+pip install multiqc
+
+Then rerun the QC commands:
+cd ~/SRA_data/sra/raw_V3V4/srr_v3v4_fastq_files/trimmed_fastq
+fastqc *.trimmed.fastq.gz -o ../fastqc_reports
+
+
+Summarize:
+cd ..
+multiqc fastqc_reports -o fastqc_reports
+
+
+Open report:
+xdg-open fastqc_reports/multiqc_report.html
+
+
