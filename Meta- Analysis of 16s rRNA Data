@@ -131,8 +131,76 @@ SRR25744532: Paired FASTQ files present
 SRR25744533: Paired FASTQ files present
 SRR25744534: Paired FASTQ files present
 
+✅ Step 1: Download Miniconda
+cd ~
+wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+
+✅ Step 2: Install Miniconda
+bash Miniconda3-latest-Linux-x86_64.sh
+
+Step 1: Find where Miniconda is installed
+
+Run:
+
+ls /home/spiseq
+
+You should see a folder like:
+
+miniconda3
+
+If that folder exists, then continue.
+
+Step 2: Manually activate Conda one time
+
+Run the following:
+
+eval "$(/home/spiseq/miniconda3/bin/conda shell.bash hook)"
+
+Now test:
+
+conda --version
+
+You should now see a version number.
+
+Step 3: Permanently enable conda in your shell
+
+Now run:
+
+conda init bash
+
+Then reload shell:
+
+source ~/.bashrc
+
+Test:
+
+conda --version
+
+Now conda should work normally every time.
+
+✅ Step 1: Accept TOS
+
+Run these two commands:
+
+conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main
+conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
+
+✅ Step 2: Try creating the environment again
+conda create -n hb-dada2-ex-wf -y
+
+✅ Step 1: Activate the new environment
+conda activate hb-dada2-ex-wf
+
+Step 2: Install cutadapt (for primer trimming)
+conda install -c bioconda cutadapt -y
+
+✅ Step 3: Install fastp (optional, but useful for QC trimming)
+conda install -c bioconda fastp -y
+
+Step 4: Install R + DADA2 + DECIPHER (for denoising & taxonomy)
+conda install -c conda-forge -c bioconda r-base=4.3 bioconductor-dada2 bioconductor-decipher -y
 
 
+This step will take some minutes, because it installs R and required libraries.
 
-
-
+Once all done environment is ready
