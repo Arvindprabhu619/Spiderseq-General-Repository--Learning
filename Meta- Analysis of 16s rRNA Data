@@ -302,32 +302,62 @@ cat("✅ Done! Quality profiles saved:\n- Forward_quality_summary.csv\n- Reverse
 
 library(dada2)
 
-# Path to trimmed fastq folder
-path <- "/home/spiseq/SRA_data/sra/raw_V3V4/srr_v3v4_fastq_files/trimmed_fastq"
+Step 1 — Inspect read quality and lengths per study
 
-# Forward and reverse reads
-fnFs <- sort(list.files(path, pattern="_1.trimmed.fastq.gz", full.names = TRUE))
-fnRs <- sort(list.files(path, pattern="_2.trimmed.fastq.gz", full.names = TRUE))
+Because your reads come from 14 studies with variable 16S regions, you cannot use a fixed truncation length.
 
-# Output folder for filtered reads
-filt_path <- file.path(path, "filtered")
-if(!dir.exists(filt_path)) dir.create(filt_path)
+You want truncation lengths that:
 
-filtFs <- file.path(filt_path, basename(fnFs))
-filtRs <- file.path(filt_path, basename(fnRs))
+Keep enough bases to merge paired reads
 
-Truncking the poor quality reads
-out <- filterAndTrim(
-  fnFs, filtFs,
-  fnRs, filtRs,
-  truncLen = c(280, 250),
-  maxN = 0,             # No ambiguous bases
-  maxEE = c(2, 2),      # Max expected errors
-  truncQ = 2,           # Truncate reads at first base with Q <= 2
-  rm.phix = TRUE,       # Remove PhiX contamination
-  compress = TRUE,
-  multithread = TRUE
-)
+Ensure median quality >30
 
-# Summary of how many reads passed filtering
-head(out)
+Account for differences between studies
+
+1a. Check read lengths (memory-efficient)
+min_fwd=9999
+min_rev=9999
+for f in *_1.trimmed.fastq.gz; do
+  len=$(zcat "$f" | awk 'NR%4==2 {if(min==""){min=length($0)}; if(length($0)<min){min=length($0)}} END{print min}')
+  if [ "$len" -lt "$min_fwd" ]; then min_fwd=$len; fi
+done
+
+for f in *_2.trimmed.fastq.gz; do
+  len=$(zcat "$f" | awk 'NR%4==2 {if(min==""){min=length($0)}; if(length($0)<min){min=length($0)}} END{print min}')
+  if [ "$len" -lt "$min_rev" ]; then min_rev=$len; fi
+done
+
+echo "Minimum forward length: $min_fwd"
+echo "Minimum reverse length: $min_rev"
+
+Before triming know the medium length of all sample reads
+This tells you the shortest read in all studies, which defines the maximum truncation lengths you can safely use.
+
+1b. Check median quality scores (optional but recommended)
+for f in *_1.trimmed.fastq.gz | head -n 10; do
+  echo $f
+  zcat $f | awk 'NR%4==0 {sum=0; for(i=1;i<=length($0);i++){sum+=ord(substr($0,i,1))-33}; print sum/length($0)}' | sort -n | head -n 1
+done
+
+
+This will give you a rough median per-read quality.
+
+You want median Q > 30 before merging.
+
+Step 2 — Plan truncation lengths per study
+
+Since each study may have different read lengths, you can either:
+
+Group by study:
+
+Check min read length per study
+
+Set truncLen for that study so that reads overlap enough to merge
+
+Global safe truncation:
+
+Use minimum read length across all samples minus a few bases
+
+Safe but trims longer reads slightly
+
+Recommended: per-study truncation. This matches what your reference paper did.
