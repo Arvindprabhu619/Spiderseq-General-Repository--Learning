@@ -391,5 +391,57 @@ for(b in batches){
                 multithread=FALSE)   # keep FALSE to save memory
 }
 
+Repeat
+library(dada2)
+
+# Set file paths
+path <- "/home/spiseq/SRA_data/sra/raw_V3V4/srr_v3v4_fastq_files/trimmed_fastq"
+filt_path <- file.path(path, "filtered")
+if(!dir.exists(filt_path)) dir.create(filt_path)
+
+# Detect forward & reverse reads
+fnFs <- sort(list.files(path, pattern="_1.trimmed.fastq.gz", full.names = TRUE))
+fnRs <- sort(list.files(path, pattern="_2.trimmed.fastq.gz", full.names = TRUE))
+sample.names <- sapply(basename(fnFs), function(x) strsplit(x, "_")[[1]][1])
+
+filtFs <- file.path(filt_path, paste0(sample.names, "_F_filt.fastq.gz"))
+filtRs <- file.path(filt_path, paste0(sample.names, "_R_filt.fastq.gz"))
+
+# Create empty output data frame
+out_list <- list()
+
+# Batch size
+batch_size <- 20
+total <- length(fnFs)
+batches <- seq(1, total, by = batch_size)
+
+for (i in batches) {
+  batch_index <- i:min(i + batch_size - 1, total)
+  
+  cat("\nProcessing batch:", batch_index, "\n")
+  
+  out_batch <- filterAndTrim(fnFs[batch_index], filtFs[batch_index],
+                             fnRs[batch_index], filtRs[batch_index],
+                             truncLen = c(260, 230),
+                             maxEE = c(2.5, 5),
+                             truncQ = 2,
+                             rm.phix = TRUE,
+                             compress = TRUE,
+                             multithread = TRUE)
+  
+  out_list[[length(out_list) + 1]] <- out_batch
+  
+  # Write interim progress to file
+  write.csv(do.call(rbind, out_list),
+            file.path(filt_path, "filter_summary_progress.csv"))
+  
+  gc()   # free R memory between batches
+}
+
+# Save final table
+out <- do.call(rbind, out_list)
+write.csv(out, file.path(filt_path, "filter_summary.csv"))
+cat("\n✅ Filtering finished and saved.\n")
+
 
 
