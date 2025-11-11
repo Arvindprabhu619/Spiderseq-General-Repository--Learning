@@ -376,4 +376,20 @@ HTTP request sent, awaiting response... 200 OK
 Length: 51395572 (49M) [application/octet-stream]
 Saving to: ‘silva_nr_v138_train_set.fa.gz’
 
+batch_size <- 20  # adjust based on number of samples
+batches <- split(seq_along(fnFs), ceiling(seq_along(fnFs)/batch_size))
+
+for(b in batches){
+  cat("\nProcessing batch:", b, "\n")
+  filterAndTrim(fnFs[b], filtFs[b], fnRs[b], filtRs[b],
+                truncLen=c(240,200),
+                maxN=0,
+                maxEE=c(2,5),
+                truncQ=2,
+                rm.phix=TRUE,
+                compress=TRUE,
+                multithread=FALSE)   # keep FALSE to save memory
+}
+
+
 
