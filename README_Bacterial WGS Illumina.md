@@ -342,3 +342,265 @@ Poor assemblies: Check read quality and coverage depth
 Failed annotations: Verify genome format and gene models
 Include metadata (strain, date, source)
 Example: Ecoli_K12_MG1655_2024_lab.fastq.gz
+
+
+Genome Assembly - Complete Guide
+🧩 Understanding Genome Assembly
+What is Genome Assembly?
+Genome assembly is the process of reconstructing the original genome sequence from millions of short sequencing reads. Think of it as solving a massive jigsaw puzzle where:
+
+Pieces: Short DNA reads (150-300 bp)
+Final picture: Complete bacterial genome (2-8 Mb)
+Challenge: Repetitive regions and sequencing errors
+Assembly Algorithms
+1. Overlap-Layout-Consensus (OLC)
+Reads → Find Overlaps → Layout Graph → Consensus Sequence
+Pros: Good for long reads, handles repeats well
+Cons: Memory intensive, slower
+Tools: Canu, Flye (for long reads)
+2. De Bruijn Graph
+Reads → k-mers → Graph → Eulerian Path → Assembly
+Pros: Memory efficient, fast for short reads
+Cons: Struggles with repeats, sensitive to errors
+Tools: SPAdes, Velvet, MEGAHIT
+3. String Graph
+Reads → Overlap Graph → String Graph → Contigs
+Pros: Efficient, handles complex genomes
+Cons: Complex implementation
+Tools: miniasm, StringTie
+🛠️ Assembly Tools Comparison
+Tool	Algorithm	Best For	Memory	Speed	Quality
+SPAdes	Multi-k de Bruijn	General bacterial WGS	Medium	Medium	High
+Unicycler	Hybrid OLC/dB	Complete circular genomes	High	Slow	Excellent
+Velvet	Single-k de Bruijn	Quick drafts	Low	Fast	Medium
+MEGAHIT	Succinct de Bruijn	Large datasets	Very Low	Fast	Good
+SKESA	de Bruijn variant	NCBI pipeline	Low	Fast	Good
+Flye	Repeat graph	Long reads primary	Medium	Medium	Excellent
+📊 Assembly Quality Metrics
+Primary Metrics
+Number of Contigs
+
+Fewer = better assembly
+Target: <20 for bacteria
+N50
+
+Length where 50% of assembly is in contigs ≥ this size
+Higher = better contiguity
+Target: >100kb for bacteria
+Total Length
+
+Should match expected genome size
+Target: 95-105% of expected
+Largest Contig
+
+Should be substantial portion of genome
+Target: >25% of genome
+Advanced Metrics
+L50: Number of contigs needed to reach N50
+N90: Length where 90% of assembly is covered
+Gap count: Number of ambiguous bases (Ns)
+GC content: Should match species expectation
+Assembly Completeness
+BUSCO Score
+
+Benchmarking Universal Single-Copy Orthologs
+Target: >95% complete
+Coverage Depth
+
+Even distribution across genome
+Target: 30-100x average coverage
+🎯 SPAdes Assembly - Step by Step
+Basic SPAdes Command
+spades.py \
+  --pe1-1 sample_R1_trimmed.fastq.gz \
+  --pe1-2 sample_R2_trimmed.fastq.gz \
+  -o sample_spades \
+  --threads 8 \
+  --memory 16
+Advanced SPAdes Options
+spades.py \
+  --pe1-1 sample_R1_trimmed.fastq.gz \
+  --pe1-2 sample_R2_trimmed.fastq.gz \
+  -o sample_spades_careful \
+  --careful \
+  --cov-cutoff auto \
+  --threads 8 \
+  --memory 16 \
+  --tmp-dir /tmp/spades_tmp
+SPAdes Output Files
+contigs.fasta: Final assembled contigs
+scaffolds.fasta: Scaffolded sequences
+assembly_graph.fastg: Assembly graph
+spades.log: Detailed log file
+params.txt: Parameters used
+SPAdes k-mer Strategy
+SPAdes automatically uses multiple k-mer sizes:
+
+Small k-mers (21, 33): Handle coverage variations
+Medium k-mers (55, 77): Resolve most regions
+Large k-mers (99, 127): Span repeats
+🔄 Unicycler Assembly
+When to Use Unicycler
+Want complete circular genomes
+Have both short and long reads
+Quality over speed priority
+Plasmid recovery important
+Unicycler Command
+# Short reads only
+unicycler \
+  -1 sample_R1_trimmed.fastq.gz \
+  -2 sample_R2_trimmed.fastq.gz \
+  -o sample_unicycler \
+  --threads 8
+
+# Hybrid assembly (short + long reads)
+unicycler \
+  -1 sample_R1_trimmed.fastq.gz \
+  -2 sample_R2_trimmed.fastq.gz \
+  -l sample_long_reads.fastq.gz \
+  -o sample_unicycler_hybrid \
+  --threads 8
+🚀 MEGAHIT Assembly
+When to Use MEGAHIT
+Limited computational resources
+Large metagenomic datasets
+Speed is priority
+Memory constraints (<8GB)
+MEGAHIT Command
+megahit \
+  -1 sample_R1_trimmed.fastq.gz \
+  -2 sample_R2_trimmed.fastq.gz \
+  -o sample_megahit \
+  --threads 8 \
+  --memory 0.5
+📈 Assembly Quality Assessment
+QUAST - Assembly Statistics
+# Basic assessment
+quast.py contigs.fasta -o assembly_stats
+
+# With reference genome
+quast.py contigs.fasta \
+  -r reference_genome.fasta \
+  -g reference_annotation.gff \
+  -o assembly_stats_ref
+
+# Multiple assemblies
+quast.py spades/contigs.fasta \
+         unicycler/assembly.fasta \
+         megahit/final.contigs.fa \
+         -o assembly_comparison
+BUSCO - Completeness Assessment
+# Download databases (first time only)
+busco --list-datasets
+
+# Run BUSCO assessment
+busco \
+  -i contigs.fasta \
+  -l bacteria_odb10 \
+  -o sample_busco \
+  -m genome \
+  --cpu 8
+CheckM - Contamination Assessment
+# For single genomes
+checkm lineage_wf \
+  -t 8 \
+  -x fasta \
+  genome_directory \
+  checkm_output
+
+# Generate summary
+checkm qa \
+  checkm_output/lineage.ms \
+  checkm_output
+🔧 Troubleshooting Assembly Issues
+Poor Assembly Quality
+Problem: Many small contigs, low N50
+
+# Solutions:
+1. Check read quality - may need better trimming
+2. Increase coverage depth - sequence deeper
+3. Try different assembler
+4. Adjust k-mer parameters
+5. Check for contamination
+High Memory Usage
+Problem: SPAdes crashes with memory error
+
+# Solutions:
+1. Increase --memory parameter
+2. Use MEGAHIT instead
+3. Subsample reads for pilot assembly
+4. Use --careful mode (uses less memory)
+5. Set custom k-mer sizes (smaller range)
+Fragmented Assembly
+Problem: Expected single chromosome in many pieces
+
+# Solutions:
+1. Try Unicycler for circularization
+2. Check for plasmids (separate assembly)
+3. Use long reads if available
+4. Manual gap closing with PCR
+5. Increase sequencing depth
+Contamination
+Problem: Assembly much larger than expected
+
+# Detection:
+1. Check QUAST report for unusual size
+2. Run BUSCO for multiple lineages
+3. Use CheckM for contamination assessment
+4. BLAST contigs against database
+
+# Solutions:
+1. Bin contaminant sequences
+2. Remove host DNA reads
+3. Improve DNA extraction protocol
+📋 Assembly Checklist
+Pre-Assembly
+ Read quality >Q30 for 75% of bases
+ Adapters removed
+ Sufficient coverage depth (30-100x)
+ Proper paired-end library prep
+Post-Assembly
+ Total length matches expectation (±10%)
+ Number of contigs reasonable (<50)
+ N50 >50kb (preferably >100kb)
+ BUSCO completeness >90%
+ No obvious contamination
+ GC content matches species
+Documentation
+ Assembly parameters recorded
+ Quality metrics documented
+ Computational resources noted
+ Assembly uploaded to database
+ Methods section written
+🎓 Assembly Best Practices
+Start with Quality Control
+
+Never skip read QC
+Poor input = poor assembly
+Choose Appropriate Tool
+
+SPAdes for most bacterial genomes
+Unicycler for complete genomes
+MEGAHIT for resource constraints
+Optimize Parameters
+
+Use --careful mode for important samples
+Adjust memory based on system
+Monitor intermediate outputs
+Validate Results
+
+Always run QUAST and BUSCO
+Compare with related genomes
+Check for biological plausibility
+Document Everything
+
+Save all parameters and logs
+Version control your commands
+Document computational environment
+📚 Additional Resources
+SPAdes Manual: https://cab.spbu.ru/software/spades/
+Unicycler Documentation: https://github.com/rrwick/Unicycler
+QUAST User Manual: http://quast.sourceforge.net/
+BUSCO User Guide: https://busco.ezlab.org/
+Assembly Best Practices: https://github.com/PacificBiosciences/pbbioconda
+
