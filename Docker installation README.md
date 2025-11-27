@@ -45,6 +45,34 @@ To try something more ambitious, you can run an Ubuntu container with:
 Share images, automate workflows, and more with a free Docker ID:
  https://hub.docker.com/
 
+ ✔ Advantages (why most labs use Docker/Singularity now)
+
+Perfect reproducibility
+Once an image is built, the tool versions never change.
+
+Zero conflicts
+Each run uses an isolated filesystem + isolated conda env.
+
+Your operating system is unaffected
+Even if Ubuntu breaks packages, the container still works.
+
+Shareable / portable
+You can give your image to someone else → same pipeline works on their system.
+
+Supports HPC with Singularity
+Docker → Singularity conversion is standard for cluster use.
+
+Easy to archive your workflow
+Imagine rerunning the same analysis 3 years later — Docker is the only reliable method.
+
+❌ Disadvantages
+
+Building the image can take time.
+
+Requires Docker knowledge.
+
+Slight overhead in container startup (but negligible for real pipelines).
+
 For more examples and ideas, visit:
  https://docs.docker.com/get-started/
 
