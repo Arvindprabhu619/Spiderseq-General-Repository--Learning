@@ -1,1 +1,106 @@
+Get docker installed in ubuntu, refer docker readme
+
+Then
+
+Step 3 — Create & build the unified WGS Docker image (detailed)
+Goal: produce a reproducible Docker image wgs_bacteria:1.0 that contains all tools for the WGS pipeline (download, QC, trim, assembly, typing, AMR, phylogeny).
+
+Work from your project root — the same $PROJECT you created earlier (e.g. ~/wgs_bacteria_project).
+
+3.1 — Create the files
+
+Open a terminal and run these commands (they create files with the exact contents we discussed):
+
+spiseq@ASUS-TUF-Gaming-F15-FX506HF-FX506HF:~/Desktop$ cd ~/wgs_bacteria_project
+pwd
+ls
+/home/spiseq/wgs_bacteria_project
+spiseq@ASUS-TUF-Gaming-F15-FX506HF-FX506HF:~/wgs_bacteria_project$ 
+
+spiseq@ASUS-TUF-Gaming-F15-FX506HF-FX506HF:~/wgs_bacteria_project$ # create Dockerfile
+cat > Dockerfile <<'EOF'
+# Dockerfile — unified bacterial WGS image
+FROM continuumio/miniconda3:latest
+
+ENV DEBIAN_FRONTEND=noninteractive
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+      build-essential ca-certificates curl wget git unzip bzip2 \
+      libbz2-dev liblzma-dev libzstd1 pigz procps && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+COPY environment.yml /tmp/environment.yml
+
+RUN conda install -y -n base -c conda-forge mamba && \
+    mamba env create -n wgs -f /tmp/environment.yml && \
+    conda clean -afy && \
+    rm -f /tmp/environment.yml
+
+SHELL ["conda", "run", "-n", "wgs", "/bin/bash", "-lc"]
+ENV PATH=/opt/conda/envs/wgs/bin:$PATH
+WORKDIR /work
+ENTRYPOINT [ "/bin/bash" ]
+EOF
+
+Step 3.2 — Build the Docker image
+
+Run this command from inside ~/wgs_bacteria_project:
+
+docker build -t wgs_bacteria:1.0 .
+
+What this does:
+
+Starts from continuumio/miniconda3:latest.
+
+Installs system packages (apt-get).
+
+Copies environment.yml into the image.
+
+Installs mamba and uses it to create the wgs Conda environment.
+
+Cleans temporary files to reduce image size.
+
+Sets the working directory to /work and exposes the wgs environment binaries on PATH.
+
+What we are doing step by step
+
+Create a list of all required packages and versions
+
+That’s what the environment.yml file is.
+
+It lists every bioinformatics tool you need for bacterial WGS (FastQC, fastp, SPAdes, Prokka, etc.) with specific versions.
+
+Pinning versions ensures reproducibility: if you rebuild later, the same versions are installed.
+
+Create a Dockerfile
+
+The Dockerfile is a “recipe” for a container.
+
+It starts from a clean base image (Miniconda) and tells Docker how to build the container.
+
+Steps include installing system packages, copying environment.yml, installing mamba, and creating a conda environment inside the image.
+
+Build the Docker image
+
+When you run docker build -t wgs_bacteria:1.0 ., Docker executes the Dockerfile instructions step by step:
+
+Install OS dependencies
+
+Copy environment.yml
+
+Install mamba and create the wgs environment with all tools inside the image
+
+Clean up to reduce image size
+
+At the end, you get a self-contained Docker image that has all WGS tools installed and ready to use.
+
+Use the Docker image
+
+You can now run the container with docker run and all tools will be available inside it.
+
+Your host OS is unaffected — nothing is installed globally.
+
+You can mount your project folder so data and results are accessible outside the container.
 
