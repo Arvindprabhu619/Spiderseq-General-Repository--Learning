@@ -174,5 +174,68 @@ dependencies:
   - pip:
       - pyfastx
 
+Perfect — your Docker image wgs_bacteria:1.0 has successfully built. 🎉
+To start using your WGS environment:
+
+docker run -it --rm wgs_bacteria:1.0
+
+To check it proper working 
+
+spiseq@ASUS-TUF-Gaming-F15-FX506HF-FX506HF:~/wgs_bacteria_project$ docker run -it --rm wgs_bacteria:1.0
+(base) root@0b1e1d613786:/work# conda env list
+fastqc --version
+spades.py --version
+prokka --version
+
+# conda environments:
+#
+# * -> active
+# + -> frozen
+base                 *   /opt/conda
+wgs                      /opt/conda/envs/wgs
+
+FastQC v0.12.1
+/opt/conda/envs/wgs/share/spades/spades_pipeline/support.py:488: SyntaxWarning: invalid escape sequence '\d'
+  return [atoi(c) for c in re.split("(\d+)", text)]
+SPAdes genome ass
+
+1️⃣ Activate your WGS environment
+conda activate wgs
+spiseq@ASUS-TUF-Gaming-F15-FX506HF-FX506HF:~/wgs_bacteria_project$ docker run -it --rm -v ~/wgs_bacteria_project:/work wgs_bacteria:1.0
+(base) root@eec43db59d2d:/work# conda activate wgs
+(wgs) root@eec43db59d2d:/work# 
+Option 1: Update CA certificates inside container
+apt-get update && apt-get install -y ca-certificates
+update-ca-certificates
+prefetch SRR36198494
+fastq-dump --split-files --gzip SRR36198494
+
+
+Troble shooting
+conda remove -n wgs sra-tools
+conda install -n wgs -c bioconda sra-tools
+
+# Remove the old Bioconda sra-tools
+conda remove -n wgs sra-tools
+
+# Download and install NCBI SRA Toolkit (OpenSSL version)
+wget https://ftp-trace.ncbi.nlm.nih.gov/sra/sdk/current/sratoolkit.current-ubuntu64.tar.gz
+tar -xvzf sratoolkit.current-ubuntu64.tar.gz
+export PATH=$PWD/sratoolkit.current-ubuntu64/bin:$PATH
+
+# Test
+prefetch --version
+fastq-dump --version
+# Add SRA Toolkit to PATH
+export PATH=$PWD/sratoolkit.3.2.1-ubuntu64/bin:$PATH
+
+# Verify
+prefetch --version
+fasterq-dump --version
+# Download SRR to /work (mounted to host)
+prefetch SRR36198494
+
+# Convert to gzipped FASTQ
+fasterq-dump SRR36198494 --split-files --gzip
 
 
