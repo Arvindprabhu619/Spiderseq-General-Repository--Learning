@@ -313,3 +313,5 @@ Bakta
 Snippy
 
 IQ-TREE
+
+✅ This README can be saved as README.md in your GitHub repo, along with Dockerfile and environment.yml. It provides full reproducible instructions, commands, and explanations for bacterial WGS using Docker.
