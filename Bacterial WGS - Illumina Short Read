@@ -654,9 +654,9 @@ If you want the most accurate and curated annotation (recommended):
 conda install -c conda-forge -c bioconda bakta
 
 mkdir -p bakta_db
-bakta_db download --output bakta_db
+bakta_db download --type light --output bakta_db
 
-Bakta’s full database (~15–20 GB) is large because it contains curated, high-quality biological datasets used for accurate genome annotation.
+Bakta’s light database (~1.5 GB) is small , it contains curated, high-quality biological datasets used for accurate genome annotation.
 📌 Your pipeline so far
 
 ✔ QC
@@ -666,3 +666,322 @@ Bakta’s full database (~15–20 GB) is large because it contains curated, high
 ✔ QUAST quality check
 ⬅ Next: Annotation (Bakta)
 Then optionally AMR, MLST, plasmids, virulence.
+
+✅ Step 2 — Run Bakta with the correct DB path
+
+Use the actual path inside your container:
+
+bakta --db /work/bakta_db/db-light --threads 4 --output bakta_output polished_scaffolds.fasta
+
+5. How to quantify completeness exactly
+
+conda install -c bioconda -c conda-forge busco
+busco --version
+BUSCO requires a lineage dataset (you need bacteria_odb10).
+
+Download it:
+
+busco --download bacteria_odb10
+
+🔍 3. Run BUSCO after installation
+
+Once BUSCO is installed and the DB is downloaded:
+
+busco -i polished_scaffolds.fasta -l bacteria_odb10 -o busco_out -m genome --cpu 4
+
+⭐ Final Interpretation (concise)
+Metric	Meaning
+C = 100%	Genome is fully represented
+S = 4.8%	Very low contiguity
+D = 95.2%	High redundancy → fragmented assembly
+F = 0%	No broken genes
+M = 0%	No missing genes
+
+2️⃣ AMR, virulence, plasmid analysis (very important)
+
+Install tools if needed:
+
+conda install -c bioconda abricate
+abricate --setupdb
+
+
+Run on polished genome:
+
+abricate polished_scaffolds.fasta > abricate_results.tsv
+
+Nice — let’s move forward. Since you’ve got a polished, annotated assembly and confirmed no AMR hits, the most useful next steps (practical, fast, and informative) are:
+
+1) identify the strain/species and sequence type (ANI / GTDB-Tk / MLST) — tells you what organism you have;
+2) detect plasmids & replicons (MOB-suite / PlasmidFinder) — find mobile elements that could carry AMR or virulence;
+3) screen for virulence factors and prophages — biological context;
+4) produce final QC (CheckM / BUSCO already done) and prepare NCBI submission if you want to share the genome.
+
+1) Species identification & typing (fastANI + mlst)
+
+FastANI gives pairwise ANI vs a reference; mlst gives sequence type for many species.
+# install if missing
+conda install -y -c bioconda fastani mlst
+# install if missing
+conda install -y -c bioconda fastani mlst
+
+# Option A: fastANI vs a reference file (if you have a candidate ref)
+fastani -q polished_scaffolds.fasta -r /path/to/closest_reference.fna -o fastani_out.txt --fragLen 1000
+
+# Option B: search a collection of refs (if you have a folder 'refs/')
+# fastani will produce a table of best matches
+fastani -q polished_scaffolds.fasta -r refs/*.fna -o fastani_multi_out.txt
+
+# MLST (auto-detects scheme)
+mlst polished_scaffolds.fasta > mlst_result.txt
+
+if above does nt work
+🧰 Steps to download reference genomes for your species
+
+Here's a minimal workflow using command‑line tools:
+✅ How to fix / workaround
+
+Option 1: Use wget instead (simpler and works over HTTP/HTTPS)
+
+wget https://ftp.ncbi.nlm.nih.gov/genomes/ASSEMBLY_REPORTS/assembly_summary_refseq.txt
+
+
+This downloads the same file via standard HTTP.
+
+Less likely to be blocked by firewalls.
+
+File size: ~20–25 MB → should finish in seconds.
+
+Check it after download:
+
+ls -lh assembly_summary_refseq.txt
+head assembly_summary_refseq.txt
+Next steps: filter for L. plantarum
+
+Search for the old species name:
+
+grep -E 'Lactobacillus plantarum' assembly_summary_refseq.txt > plantarum_list.txt
+
+
+Check how many lines matched:
+
+wc -l plantarum_list.txt
+head plantarum_list.txt
+
+
+You should see entries with the FTP paths to the genome assemblies.
+
+Create a folder for your reference genomes:
+
+mkdir -p ref_genomes
+
+
+Download one or more high-quality assemblies (preferably “reference” or “representative”):
+
+Extract the FTP paths from plantarum_list.txt. The FTP path is in column 20. For example:
+
+awk -F '\t' '{print $20}' plantarum_list.txt
+
+Download one or more high-quality assemblies (preferably “reference” or “representative”):
+
+Extract the FTP paths from plantarum_list.txt. The FTP path is in column 20. For example:
+
+awk -F '\t' '{print $20}' plantarum_list.txt
+
+✅ Download the reference genome FASTA(s)
+
+Suppose you have an FTP path like:
+
+https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/474/695/GCF_000474695.1_Lactobacillus_plantarum_WJL_genome_Assembly
+
+
+Do this:
+
+# Make a directory for reference genomes
+mkdir -p ref_genomes
+cd ref_genomes
+
+# Download the genomic FASTA (compressed) — add “_genomic.fna.gz”
+wget ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/474/695/GCF_000474695.1_Lactobacillus_plantarum_WJL_genome_Assembly/GCF_000474695.1_Lactobacillus_plantarum_WJL_genome_Assembly_genomic.fna.gz
+
+# Repeat for other URLs (change the path accordingly)
+
+
+Then decompress:
+
+gunzip *.fna.gz
+
+
+
+1. Run fastANI
+
+Assuming your polished genome is polished_scaffolds.fasta and your references are in ref_genomes/:
+
+fastANI -q /work/polished_scaffolds.fasta -r *.fna -o /work/ani_results.txt
+
+Your output
+/work/polished_scaffolds.fasta  GCF_000474695.1_Lactobacillus_plantarum_WJL_genome_Assembly_genomic.fna  98.3665  925  1580
+/work/polished_scaffolds.fasta  GCF_000474695.1_Lactobacillus_plantarum_WJL_genome_Assembly_genomic.fna  98.3665  925  1580
+
+
+Columns:
+
+Query genome → your polished genome
+
+Reference genome → the WJL strain of Lactobacillus plantarum
+
+ANI (%) → 98.37
+
+Fragments matched → 925
+
+Total query fragments → 1580
+
+1. Install or check snippy
+
+snippy is a fast and widely used tool for bacterial SNP calling. You should have it in your environment. If not:
+
+conda install -c bioconda snippy
+
+2. Run snippy
+snippy --cpus 4 \
+       --outdir snippy_out \
+       --ref /work/ref_genomes/GCF_000474695.1_Lactobacillus_plantarum_WJL_genome_Assembly_genomic.fna \
+       --ctgs /work/polished_scaffolds.fasta
+
+
+--ref → the reference genome (WJL strain)
+
+--ctgs → your polished assembly
+
+--outdir → output directory
+
+--cpus → number of threads to speed up
+
+3. Generate a core alignment for phylogeny
+
+snippy-core --ref /work/ref_genomes/GCF_000474695.1_Lactobacillus_plantarum_WJL_genome_Assembly_genomic.fna \
+            --prefix core_alignment snippy_out
+
+Produces core.full.aln — multiple alignment of core SNPs across genomes (here just one query vs reference, but can add more later)
+
+Perfect — to generate a meaningful phylogenetic tree, you need at least 3 genomes. You already have your polished genome and the WJL reference; now we’ll add 2–3 more L. plantarum reference genomes from NCBI RefSeq. Once you have them, we’ll run snippy for each and build a tree with IQ-TREE.
+
+Here’s a step-by-step plan:
+
+1️⃣ Download additional reference genomes
+
+Example additional references (FASTA files):
+
+# Make sure you are in the ref_genomes folder
+cd /work/ref_genomes
+
+# Download a few more L. plantarum genomes
+wget ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/507/045/GCF_000507045.1_Velvet_for_Version_1.2.03_of_the_Lactobacillus_plantarum_genome/GCF_000507045.1_Velvet_for_Version_1.2.03_of_the_Lactobacillus_plantarum_genome_genomic.fna.gz
+wget ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/001/302/645/GCF_001302645.1_ASM130264v1/GCF_001302645.1_ASM130264v1_genomic.fna.gz
+wget ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/965/213/325/GCF_965213325.1_isolate_VK_MK/GCF_965213325.1_isolate_VK_MK_genomic.fna.gz
+
+# Decompress
+gunzip *.fna.gz
+
+2️⃣ Run Snippy for each genome
+
+You’ll map your polished genome against each reference separately:
+
+# WJL reference (already done)
+snippy --cpus 4 --ref /work/ref_genomes/GCF_000474695.1_Lactobacillus_plantarum_WJL_genome_Assembly_genomic.fna --ctgs /work/polished_scaffolds.fasta --outdir snippy_WJL
+
+# New references
+snippy --cpus 4 --ref /work/ref_genomes/GCF_000507045.1_*.fna --ctgs /work/polished_scaffolds.fasta --outdir snippy_507045
+snippy --cpus 4 --ref /work/ref_genomes/GCF_001302645.1_*.fna --ctgs /work/polished_scaffolds.fasta --outdir snippy_130264
+snippy --cpus 4 --ref /work/ref_genomes/GCF_965213325.1_*.fna --ctgs /work/polished_scaffolds.fasta --outdir snippy_965213325
+
+
+Each snippy_* folder will contain the SNPs and aligned sequences.
+
+3️⃣ Generate core alignment
+
+Now run snippy-core including all Snippy output folders:
+
+snippy-core --ref /work/ref_genomes/GCF_000474695.1_Lactobacillus_plantarum_WJL_genome_Assembly_genomic.fna \
+            --prefix core_multi snippy_WJL snippy_507045 snippy_130264 snippy_965213325
+
+
+Produces core_multi.full.aln — alignment of all genomes
+
+Produces core_multi.core.aln — core SNP alignment
+
+4️⃣ Build the phylogenetic tree
+iqtree -s core_multi.full.aln -m GTR+G -bb 1000 -nt AUTO
+
+
+Produces the ML tree with bootstrap support
+
+Output: core_multi.full.aln.treefile
+
+Solutions
+
+Map all query genomes to the same reference genome
+
+For example, choose GCF_000474695.1_Lactobacillus_plantarum_WJL_genome_Assembly_genomic.fna as the reference:
+
+# Run all Snippy runs again, but use the WJL reference
+snippy --cpus 4 \
+       --ref /work/ref_genomes/GCF_000474695.1_Lactobacillus_plantarum_WJL_genome_Assembly_genomic.fna \
+       --ctgs /work/polished_scaffolds.fasta \
+       --outdir snippy_WJL \
+       --force
+
+snippy --cpus 4 \
+       --ref /work/ref_genomes/GCF_000474695.1_Lactobacillus_plantarum_WJL_genome_Assembly_genomic.fna \
+       --ctgs /work/ref_genomes/GCF_000507045.1_Velvet_for_Version_1.2.03_of_the_Lactobacillus_plantarum_genome_genomic.fna \
+       --outdir snippy_507045_WJL \
+       --force
+
+snippy --cpus 4 \
+       --ref /work/ref_genomes/GCF_000474695.1_Lactobacillus_plantarum_WJL_genome_Assembly_genomic.fna \
+       --ctgs /work/ref_genomes/GCF_001302645.1_ASM130264v1_genomic.fna \
+       --outdir snippy_130264_WJL \
+       --force
+
+
+Then run Snippy-core:
+
+snippy-core --ref /work/ref_genomes/GCF_000474695.1_Lactobacillus_plantarum_WJL_genome_Assembly_genomic.fna \
+            --prefix core_multi \
+            /work/ref_genomes/snippy_WJL \
+            /work/ref_genomes/snippy_507045_WJL \
+            /work/ref_genomes/snippy_130264_WJL
+
+
+✅ Key point: All sequences must be aligned to the same reference genome before you can generate a core alignment.
+
+If you want, I can write a ready-to-run workflow for all your L. plantarum genomes that will produce a core alignment and IQ-TREE phylogeny in one go. This avoids all reference mismatch errors. Do you want me to do that?
+
+2️⃣ Inspect the alignment (optional)
+# Check the first few lines
+head core_multi.full.aln
+
+# Summary statistics
+grep -c ">" core_multi.full.aln  # number of sequences
+
+3️⃣ Build a phylogenetic tree with IQ-TREE
+iqtree -s core_multi.full.aln \
+       -m GTR+G \
+       -bb 1000 \
+       -nt AUTO
+
+
+-bb 1000 → 1000 ultrafast bootstrap replicates.
+
+-nt AUTO → uses all available CPU threads.
+
+Output: core_multi.full.aln.treefile, .log, .iqtree, .ckp.gz.
+
+4️⃣ Optional: visualize the tree
+# Example using FigTree or iTOL
+# FigTree: open core_multi.full.aln.treefile
+# iTOL: upload the .treefile
+
+
+✅ After this, you’ll have a core genome SNP phylogeny for all your L. plantarum strains.
+
+If you want, I can also show a quick way to add metadata and annotate the tree, so you can see which isolate is which visually. Do you want me to do that next?
