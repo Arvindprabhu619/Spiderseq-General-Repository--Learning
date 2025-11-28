@@ -238,4 +238,172 @@ prefetch SRR36198494
 # Convert to gzipped FASTQ
 fasterq-dump SRR36198494 --split-files --gzip
 
+✅ Step 1 — Find where your FASTQ files are on your host machine
 
+You created the container earlier like this:
+
+docker run -it \
+  -v /home/spiseq/wgs_bacteria_project:/work \
+  wgs_bacteria:1.0
+
+Perfect — your data is in the correct folder:
+
+/home/spiseq/wgs_bacteria_project/
+    ├── SRR36198494_1.fastq.gz
+    ├── SRR36198494_2.fastq.gz
+    └── SRR36198494/SRR36198494.sra
+
+
+Now you can continue the analysis exactly from where you stopped.
+
+✅ Step 1 — Start the container with the correct mount
+
+Run this on your host:
+
+docker run -it \
+  -v /home/spiseq/wgs_bacteria_project:/work \
+  wgs_bacteria:1.0
+
+
+You will enter:
+
+(base) root@xxxx:/work#
+
+✅ Step 2 — Move into the working directory
+
+Inside container:
+
+cd /work
+ls -lh
+
+
+You should now see:
+
+SRR36198494_1.fastq.gz
+SRR36198494_2.fastq.gz
+SRR36198494/
+
+✅ Step 3 — Activate the WGS environment
+conda activate wgs
+
+
+Prompt will change:
+
+(wgs) root@xxxx:/work#
+
+🎯 Now you can continue from the next pipeline step
+
+You already completed:
+
+prefetch
+
+fasterq-dump
+
+gzip
+
+So next steps are:
+
+
+So your FASTQ files should be in the directory where you ran the command yesterday.
+
+✅ Step 1 — Create the FastQC output directory
+
+Inside the container (you are already inside):
+
+mkdir -p fastqc_output
+
+✅ Step 2 — Run FastQC again
+fastqc SRR36198494_1.fastq.gz SRR36198494_2.fastq.gz -o fastqc_output
+
+
+FastQC output will appear in:
+
+/work/fastqc_output/SRR36198494_1_fastqc.html
+/work/fastqc_output/SRR36198494_2_fastqc.html
+
+✅ 1. SRA “raw” data is not always raw
+
+Most SRA submissions are pre-processed by the authors before upload.
+
+Typical steps done before depositing to SRA:
+
+✔ Adapter removal
+✔ Quality trimming
+✔ Removal of low-quality reads
+✔ Filtering short reads
+✔ Removal of PhiX
+
+This is especially common for:
+
+Bacterial WGS
+
+Metagenomics
+
+Large datasets (NovaSeq / HiSeq)
+
+High coverage (100–300X)
+
+Because authors want to maximize assembly quality and ensure submissions pass NCBI QC.
+
+SRA does not modify reads.
+The cleaned files you see are exactly what the authors uploaded.
+
+So adapters being completely absent is absolutely normal.
+
+🛠️ 4. Tools used for trimming
+
+The industry-standard tools:
+
+⭐ fastp (best, modern, super fast)
+⭐ Trimmomatic (older but widely used)
+⭐ cutadapt (very flexible, Python-based)
+
+We will use fastp, since it is already installed in your Docker wgs environment.
+
+Step 2: Run fastp for trimming
+
+Even if your reads are clean, this teaches you how it's done.
+
+🚀 Example command:
+fastp \
+  -i SRR36198494_1.fastq.gz \
+  -I SRR36198494_2.fastq.gz \
+  -o trimmed_1.fastq.gz \
+  -O trimmed_2.fastq.gz \
+  --detect_adapter_for_pe \
+  --qualified_quality_phred 20 \
+  --length_required 50 \
+  --thread 4 \
+  --html fastp_report.html \
+  --json fastp_report.json
+
+What each parameter does:
+Option	Meaning
+-i, -I	Input R1 and R2
+-o, -O	Output trimmed reads
+--detect_adapter_for_pe	Automatically detects adapter sequence
+--qualified_quality_phred 20	Trims low-quality bases (Q20)
+--length_required 50	Removes reads < 50 bp
+--thread 4	Speed
+--html	Visual trimming report
+--json	Full metadata
+
+Output:
+
+trimmed_1.fastq.gz
+trimmed_2.fastq.gz
+fastp_report.html
+fastp_report.json
+
+▶️ Next Step in WGS Pipeline
+
+Now that trimming is done, you should proceed to:
+
+1️⃣ Run FastQC again on the trimmed reads
+fastqc trimmed_1.fastq.gz trimmed_2.fastq.gz -o fastqc_trimmed
+
+2️⃣ Run MultiQC
+
+To summarize both raw + trimmed + fastp:
+
+multiqc .
