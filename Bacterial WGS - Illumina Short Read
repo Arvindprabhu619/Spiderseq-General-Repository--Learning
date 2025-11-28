@@ -407,3 +407,262 @@ fastqc trimmed_1.fastq.gz trimmed_2.fastq.gz -o fastqc_trimmed
 To summarize both raw + trimmed + fastp:
 
 multiqc .
+
+🔬 SPAdes Command Explained (Line by Line)
+spades.py \
+  -1 trimmed_1.fastq.gz \
+  -2 trimmed_2.fastq.gz \
+  -o spades_output \
+  --careful \
+  -t 4 \
+  -m 16
+
+1. Input Files (-1 and -2)
+
+-1 trimmed_1.fastq.gz → forward reads (paired-end)
+
+-2 trimmed_2.fastq.gz → reverse reads (paired-end)
+
+Inside SPAdes:
+
+It reads the paired-end sequences and loads them into memory.
+
+Performs error correction (unless --only-assembler is used) to correct sequencing mistakes, which is crucial for high-quality assembly.
+
+
+Step 3: Assess assembly quality
+
+Use QUAST to evaluate contigs/scaffolds:
+
+quast.py spades_output/contigs.fasta -o quast_results/ -t 4
+
+
+Key metrics:
+
+N50 → contig length where 50% of assembly is in contigs of this size or longer.
+
+Total length → should roughly match expected genome size (~5 Mb for E. coli).
+
+# contigs → ideally <100 for a bacterial genome.
+
+GC content → check against known species.
+
+Optional: visualize assembly graph using Bandage:
+
+Bandage GUI spades_output/assembly_graph.fastg
+
+
+Allows you to see complex repeats or unresolved regions.
+
+
+3. Next steps
+
+Quality assessment
+
+Use QUAST to check contig/scaffold N50, genome size, GC content:
+
+quast.py spades_output/contigs.fasta -o quast_results/ -t 4
+quast.py spades_output/scaffolds.fasta -o quast_results_scaffolds/ -t 4
+
+1. Optional: Polishing the assembly (improve accuracy)
+
+Even with a good draft, polishing corrects small indels, SNPs, and misassemblies using your original reads. A common tool: Pilon.
+
+Steps:
+
+# 1. Index scaffolds
+bwa index spades_output/scaffolds.fasta
+
+# 2. Map trimmed reads
+bwa mem -t 4 spades_output/scaffolds.fasta trimmed_1.fastq.gz trimmed_2.fastq.gz | samtools sort -o reads.bam
+samtools index reads.bam
+
+# 3. Run Pilon polishing
+pilon --genome spades_output/scaffolds.fasta --frags reads.bam --output polished_scaffolds --threads 4
+
+
+Output: polished_scaffolds.fasta
+
+This reduces residual sequencing errors.
+
+Step 1: Index the scaffolds
+bwa index spades_output/scaffolds.fasta
+
+
+What it does:
+
+bwa index prepares your assembled scaffolds (FASTA file) for fast read alignment.
+
+It creates multiple index files (suffix array, BWT, etc.) that allow BWA to quickly map millions of reads to the assembly.
+
+Why it's needed:
+
+Alignment tools like BWA cannot map reads to a genome without an index.
+
+Think of it as creating a "searchable dictionary" of your genome.
+
+Step 2: Map reads to the assembly
+bwa mem -t 4 spades_output/scaffolds.fasta trimmed_1.fastq.gz trimmed_2.fastq.gz | samtools sort -o reads.bam
+samtools index reads.bam
+
+
+Breaking it down:
+
+bwa mem -t 4 spades_output/scaffolds.fasta trimmed_1.fastq.gz trimmed_2.fastq.gz
+
+Maps your paired-end trimmed reads (trimmed_1 and trimmed_2) back to the assembly (scaffolds.fasta).
+
+-t 4 tells BWA to use 4 CPU threads (faster alignment).
+
+Output is a SAM format stream (text-based alignment info).
+
+| samtools sort -o reads.bam
+
+Pipes the SAM output into samtools, which:
+
+Converts it into BAM (binary format, smaller and faster).
+
+Sorts reads by genomic position, which Pilon requires.
+
+samtools index reads.bam
+
+Creates an index file (reads.bam.bai) so Pilon can quickly access reads at any genome position.
+
+Purpose:
+
+Pilon uses these alignments to see where reads disagree with the assembly, identifying errors to correct.
+
+Step 3: Run Pilon polishing
+pilon --genome spades_output/scaffolds.fasta --frags reads.bam --output polished_scaffolds --threads 4
+
+
+Breaking it down:
+
+--genome spades_output/scaffolds.fasta
+
+The assembly FASTA to be polished (input).
+
+--frags reads.bam
+
+The aligned reads (BAM file) that Pilon uses as evidence for corrections.
+
+“Frags” means paired-end or single reads mapped to the assembly.
+
+--output polished_scaffolds
+
+The prefix for output files.
+
+Pilon generates:
+
+polished_scaffolds.fasta → corrected genome
+
+polished_scaffolds.vcf → all variants Pilon corrected
+
+polished_scaffolds.changes → summary of fixes
+
+--threads 4
+
+Use 4 CPU threads for faster processing.
+
+What Pilon does internally:
+
+Looks at each position in the assembly and the pileup of aligned reads.
+
+Corrects:
+
+Single nucleotide mismatches
+
+Small insertions/deletions
+
+Small misassemblies or gaps
+
+Generates an error-corrected assembly ready for annotation.
+
+Summary
+Step	Purpose
+bwa index	Prepare assembly for read mapping.
+bwa mem + samtools	Map reads back to assembly; sort & index BAM for Pilon.
+pilon	Compare reads to assembly; correct errors; produce polished genome.
+
+✅ After this workflow, your polished_scaffolds.fasta will be more accurate at the base level, reducing sequencing errors and improving gene predictions.
+
+Option 1: Install Pilon locally
+
+Download the latest Pilon jar:
+
+wget https://github.com/broadinstitute/pilon/releases/download/v1.24/pilon-1.24.jar
+
+
+This downloads the jar file to your current directory.
+
+Run Pilon using Java:
+
+java -Xmx16G -jar pilon-1.24.jar --genome spades_output/scaffolds.fasta --frags reads.bam --output polished_scaffolds --threads 4
+
+
+-Xmx16G → allocates 16 GB RAM (adjust to your system).
+
+All other arguments are the same as before.
+
+Pilon is a Java program, so you run it via java -jar pilon.jar rather than just pilon.
+
+1. Run QUAST again on the polished genome
+
+This checks if N50, number of contigs, or assembly size improved.
+
+quast.py polished_scaffolds.fasta -o quast_polished -t 4
+
+2. (Optional but recommended) Run a second round of Pilon
+
+Many pipelines run 2–3 polishing rounds, because the first round fixes errors that improve read mapping for the next round.
+
+Round 2:
+bwa mem -t 4 polished_scaffolds.fasta trimmed_1.fastq.gz trimmed_2.fastq.gz | samtools sort -o reads2.bam
+samtools index reads2.bam
+
+java -Xmx16G -jar pilon-1.24.jar \
+  --genome polished_scaffolds.fasta \
+  --frags reads2.bam \
+  --output polished_round2 \
+  --threads 4
+
+✅ NEXT STEP: Genome Annotation (Bakta or Prokka)
+
+Annotation identifies:
+
+genes
+
+rRNAs, tRNAs
+
+CDS functions
+
+AMR genes
+
+virulence genes
+
+plasmid markers
+
+secretion systems
+
+operons
+
+Option A — Bakta (modern, best for bacterial WGS)
+
+If you want the most accurate and curated annotation (recommended):
+
+1. Install Bakta
+conda install -c conda-forge -c bioconda bakta
+
+mkdir -p bakta_db
+bakta_db download --output bakta_db
+
+Bakta’s full database (~15–20 GB) is large because it contains curated, high-quality biological datasets used for accurate genome annotation.
+📌 Your pipeline so far
+
+✔ QC
+✔ Trimming
+✔ SPAdes assembly
+✔ Polishing (Pilon)
+✔ QUAST quality check
+⬅ Next: Annotation (Bakta)
+Then optionally AMR, MLST, plasmids, virulence.
