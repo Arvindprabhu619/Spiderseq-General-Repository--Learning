@@ -1,0 +1,30 @@
+name: wgs
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - mamba
+  - sra-tools
+  - fastp=0.23.2
+  - fastqc=0.12.1
+  - multiqc=1.15
+  - spades # no version, let conda pick compatible
+  - unicycler=0.5.0
+  - quast=5.2.0
+  - prokka=1.14.6
+  - mlst=2.19.0
+  - abricate=1.0.1
+  - kraken2=2.1.2
+  - bwa=0.7.17
+  - samtools=1.17
+  - bcftools=1.17
+  - freebayes=1.3.5
+  - mash=2.3
+  - fastani=1.33
+  - snippy=4.6.0
+  - iqtree=2.2.2
+  - python=3.11
+  - pip
+  - pip:
+      - pyfastx
