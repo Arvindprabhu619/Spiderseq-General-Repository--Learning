@@ -985,3 +985,71 @@ Output: core_multi.full.aln.treefile, .log, .iqtree, .ckp.gz.
 ✅ After this, you’ll have a core genome SNP phylogeny for all your L. plantarum strains.
 
 If you want, I can also show a quick way to add metadata and annotate the tree, so you can see which isolate is which visually. Do you want me to do that next?
+
+1️⃣ Add metadata & annotate the tree (visualization)
+
+Create a simple metadata table (CSV or TSV) with columns like:
+
+strain   source   collection_date   location
+
+
+Use iTOL (Interactive Tree Of Life) or FigTree to upload the .treefile from IQ-TREE and annotate branches with metadata.
+
+Color-code strains, highlight clusters, or mark AMR/virulence profiles.
+
+2️⃣ Optional: Detect plasmids and mobile elements
+
+Install MOB-suite (if not already):
+
+conda install -c bioconda mob_suite
+
+
+Run on polished assembly:
+
+mob_recon -i polished_scaffolds.fasta -o mob_results
+
+
+This gives plasmid types, replicons, and AMR genes carried on plasmids.
+
+3️⃣ Screen for virulence factors & prophages
+
+Virulence genes: Use ABRicate with VFDB database:
+
+abricate --db vfdb polished_scaffolds.fasta > vfdb_results.tsv
+
+
+Prophages: Install PHASTER locally or submit sequences to PHASTER web server.
+
+4️⃣ Final QC / completeness check
+
+If not already done:
+
+busco -i polished_scaffolds.fasta -l bacteria_odb10 -o busco_final -m genome --cpu 4
+
+
+Confirm genome completeness and check for any fragmented or missing genes.
+
+5️⃣ Optional: Prepare for NCBI submission
+
+Use Bakta/Prokka annotation output for GenBank/FASTA files.
+
+Automate the workflow: Create a shell script or Snakemake workflow to rerun the pipeline easily for multiple isolates.
+
+Organize your results clearly:
+
+wgs_bacteria_project/
+├── raw_data/
+├── fastqc_output/
+├── trimmed_reads/
+├── spades_output/
+├── quast_results/
+├── polished_scaffolds.fasta
+├── bakta_output/
+├── abricate_results.tsv
+├── ref_genomes/
+├── snippy_core/
+├── phylogeny/
+└── metadata/
+
+
+This structure keeps everything reproducible and shareable.
